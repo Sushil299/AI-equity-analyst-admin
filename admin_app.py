@@ -21,18 +21,6 @@ st.markdown("### Enter Company Name and Analysis Quarter")
 company_name = st.text_input("Company Name")
 analysis_quarter = st.selectbox("Analysis Quarter", ["Q1FY25", "Q2FY25", "Q3FY25", "Q4FY25"])
 
-# Function to upload documents
-def upload_document(doc_type, uploaded_file):
-    if uploaded_file:
-        files = {"file": (uploaded_file.name, uploaded_file.getvalue(), "application/pdf")}
-        data = {
-            "company_name": company_name,
-            "analysis_quarter": analysis_quarter,
-            "document_type": doc_type,
-        }
-        response = requests.post(f"{BACKEND_URL}/upload/", files=files, data=data)
-        return response
-
 # Quarterly Report Upload
 st.markdown("#### 🏢 Quarterly Report")
 quarterly_file = st.file_uploader("Upload Quarterly Report", type=["pdf"], key="quarterly")
@@ -45,30 +33,40 @@ earning_file = st.file_uploader("Upload Earnings Call Transcript", type=["pdf"],
 st.markdown("#### 📊 Investor Presentation")
 presentation_file = st.file_uploader("Upload Investor Presentation", type=["pdf"], key="presentation")
 
+# Function to upload all documents in a single request
+def upload_documents():
+    files = {}
+
+    if quarterly_file:
+        files["quarterly_report"] = (quarterly_file.name, quarterly_file.getvalue(), "application/pdf")
+    else:
+        files["quarterly_report"] = ('', b'')
+
+    if earning_file:
+        files["earnings_call_transcript"] = (earning_file.name, earning_file.getvalue(), "application/pdf")
+    else:
+        files["earnings_call_transcript"] = ('', b'')
+
+    if presentation_file:
+        files["investor_presentation"] = (presentation_file.name, presentation_file.getvalue(), "application/pdf")
+    else:
+        files["investor_presentation"] = ('', b'')
+
+    data = {
+        "company_name": company_name,
+        "analysis_quarter": analysis_quarter
+    }
+
+    response = requests.post(f"{BACKEND_URL}/upload/", files=files, data=data)
+    return response
+
 # Submit Button
 if st.button("Submit"):
     if not company_name or not analysis_quarter:
         st.warning("⚠️ Please enter both Company Name and Analysis Quarter before uploading.")
     else:
-        upload_status = []
-
-        # Process each document type individually
-        for doc_type, file in [
-            ("Quarterly Report", quarterly_file),
-            ("Earnings Call Transcript", earning_file),
-            ("Investor Presentation", presentation_file)
-        ]:
-            if file:
-                response = upload_document(doc_type, file)
-                if response.status_code == 200:
-                    upload_status.append(f"{doc_type}: ✅ Uploaded successfully!")
-                else:
-                    upload_status.append(f"{doc_type}: ❌ Upload failed! ({response.text})")
-
-        if upload_status:
-            st.success("\n".join(upload_status))
+        response = upload_documents()
+        if response.status_code == 200:
+            st.success("✅ Files uploaded & AI analysis updated successfully!")
         else:
-            st.warning("⚠️ No files were uploaded. Please select at least one document.")
-
-# Divider
-st.markdown("---")
+            st.error(f"❌ Upload failed! ({response.text})")
