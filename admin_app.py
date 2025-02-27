@@ -15,60 +15,51 @@ import pandas as pd
 BACKEND_URL = "https://ai-equity-analyst.onrender.com"
 
 st.title("📤 Admin Panel - Upload Documents")
-st.markdown("### Enter Company Details and Upload Documents Separately")
+st.markdown("### Enter Company Name and Analysis Quarter")
 
 # Company Info
-nse_ticker = st.text_input("NSE Ticker")
 company_name = st.text_input("Company Name")
+analysis_quarter = st.selectbox("Analysis Quarter", ["Q1FY25", "Q2FY25", "Q3FY25", "Q4FY25"])
 
 # Function to upload documents
-def upload_document(doc_type, period, uploaded_file):
+def upload_document(doc_type, uploaded_file):
     if uploaded_file:
         files = {"file": (uploaded_file.name, uploaded_file.getvalue(), "application/pdf")}
         data = {
             "company_name": company_name,
-            "document_date": period,
+            "analysis_quarter": analysis_quarter,
             "document_type": doc_type,
         }
         response = requests.post(f"{BACKEND_URL}/upload/", files=files, data=data)
         return response
 
-# Annual Report Upload
-st.markdown("#### 📅 Annual Report")
-annual_year = st.selectbox("Annual Report for", ["FY25", "FY24", "FY23", "FY22"])
-annual_file = st.file_uploader("Upload Annual Report", type=["pdf"], key="annual")
-
 # Quarterly Report Upload
 st.markdown("#### 🏢 Quarterly Report")
-quarter_year = st.selectbox("Quarterly Report for", ["Q1FY25", "Q2FY25", "Q3FY25", "Q4FY25"])
 quarterly_file = st.file_uploader("Upload Quarterly Report", type=["pdf"], key="quarterly")
 
 # Earnings Call Transcript Upload
 st.markdown("#### 🎙 Earnings Call Transcript")
-earning_year = st.selectbox("Earnings Call Transcript for", ["Q1FY25", "Q2FY25", "Q3FY25", "Q4FY25"])
 earning_file = st.file_uploader("Upload Earnings Call Transcript", type=["pdf"], key="earnings")
 
 # Investor Presentation Upload
 st.markdown("#### 📊 Investor Presentation")
-presentation_year = st.selectbox("Investor Presentation for", ["Q1FY25", "Q2FY25", "Q3FY25", "Q4FY25"])
 presentation_file = st.file_uploader("Upload Investor Presentation", type=["pdf"], key="presentation")
 
 # Submit Button
 if st.button("Submit"):
-    if not company_name or not nse_ticker:
-        st.warning("⚠️ Please enter both NSE Ticker and Company Name before uploading.")
+    if not company_name or not analysis_quarter:
+        st.warning("⚠️ Please enter both Company Name and Analysis Quarter before uploading.")
     else:
         upload_status = []
 
         # Process each document type individually
-        for doc_type, period, file in [
-            ("Annual Report", annual_year, annual_file),
-            ("Quarterly Report", quarter_year, quarterly_file),
-            ("Earnings Call Transcript", earning_year, earning_file),
-            ("Investor Presentation", presentation_year, presentation_file)
+        for doc_type, file in [
+            ("Quarterly Report", quarterly_file),
+            ("Earnings Call Transcript", earning_file),
+            ("Investor Presentation", presentation_file)
         ]:
             if file:
-                response = upload_document(doc_type, period, file)
+                response = upload_document(doc_type, file)
                 if response.status_code == 200:
                     upload_status.append(f"{doc_type}: ✅ Uploaded successfully!")
                 else:
@@ -81,23 +72,3 @@ if st.button("Submit"):
 
 # Divider
 st.markdown("---")
-
-# Show Uploaded Documents in Table Format
-st.markdown("## 📄 Uploaded Company Documents Overview")
-
-response = requests.get(f"{BACKEND_URL}/admin-summary")
-
-if response.status_code == 200:
-    data = response.json().get("companies", [])
-    if data:
-        df = pd.DataFrame(data)
-
-        # ✅ Fix: Ensure DataFrame formatting works
-        if not df.empty:
-            st.dataframe(df.style.set_properties(**{'text-align': 'center'}))  # ✅ Better table display
-        else:
-            st.warning("⚠️ No company data available.")
-    else:
-        st.warning("⚠️ No company data available.")
-else:
-    st.error("❌ Failed to fetch company data.")
